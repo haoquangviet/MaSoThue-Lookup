@@ -2,6 +2,12 @@
 
 API tra cứu thông tin doanh nghiệp Việt Nam theo mã số thuế (MST).
 
+## 🌐 Demo
+
+**Website:** [https://companylookup.hqv.biz](https://companylookup.hqv.biz)
+
+**API Docs:** [https://companylookup.hqv.biz/docs.php](https://companylookup.hqv.biz/docs.php)
+
 ## Features
 
 - 🔍 Tra cứu thông tin công ty theo MST
@@ -9,13 +15,14 @@ API tra cứu thông tin doanh nghiệp Việt Nam theo mã số thuế (MST).
 - 🌐 Giao diện web tra cứu
 - 🔄 Hỗ trợ nhiều proxy (rotation)
 - 📚 Tài liệu API đầy đủ
+- 🔒 Tự động chuyển HTTPS
 
 ## Installation
 
 ```bash
 # Clone repo
-git clone https://github.com/user/masothue-lookup.git
-cd masothue-lookup
+git clone https://github.com/haoquangviet/MaSoThue-Lookup.git
+cd MaSoThue-Lookup
 
 # Install dependencies
 composer install
@@ -29,12 +36,12 @@ cp proxies.txt.example proxies.txt
 
 ### Web Interface
 
-Truy cập: `https://your-domain.com/`
+Truy cập: [https://companylookup.hqv.biz](https://companylookup.hqv.biz)
 
 ### API
 
 ```bash
-curl "https://your-domain.com/?mst=0315065353"
+curl "https://companylookup.hqv.biz/?mst=0315065353"
 ```
 
 ### Response
@@ -49,15 +56,14 @@ curl "https://your-domain.com/?mst=0315065353"
         "address": "Tầng 19, Indochina Park Tower...",
         "representative": "TRẦN VĂN QUYẾT",
         "phone": "02877796009",
-        "status": "Đang hoạt động",
-        ...
+        "status": "Đang hoạt động"
     }
 }
 ```
 
 ## API Documentation
 
-Xem chi tiết tại: `https://your-domain.com/docs.php`
+Xem chi tiết tại: [https://companylookup.hqv.biz/docs.php](https://companylookup.hqv.biz/docs.php)
 
 ## Response Fields
 
