@@ -37,3 +37,6 @@ RewriteRule ^api-docs/?$ index.php [L]
 
 # Default charset
 AddDefaultCharset UTF-8
+
+# Deny access to data directory
+RewriteRule ^data/ - [F,L]

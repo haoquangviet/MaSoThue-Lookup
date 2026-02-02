@@ -1,5 +1,10 @@
 <?php
 
+require_once __DIR__ . '/vendor/autoload.php';
+
+use HQV\Masothue\CompanyLookupService;
+use HQV\Masothue\RateLimiter;
+
 // Get tax code from GET parameter
 $taxCode = $_GET['mst'] ?? '';
 
@@ -11,19 +16,47 @@ if (in_array($requestUri, ['/docs', '/docs/', '/api-docs', '/api-docs/'])) {
     exit;
 }
 
-// If no tax code, serve the HTML interface
+// If no tax code, serve the HTML interface (no rate limit for homepage)
 if (empty($taxCode)) {
     header('Content-Type: text/html; charset=utf-8');
     readfile(__DIR__ . '/templates/search.html');
     exit;
 }
 
-// API mode - return JSON
+// API mode - apply rate limiting
 header('Content-Type: application/json; charset=utf-8');
 
-require_once __DIR__ . '/vendor/autoload.php';
+// Initialize rate limiter (5 requests per hour for non-whitelisted IPs)
+$rateLimiter = new RateLimiter(5, 3600);
 
-use HQV\Masothue\CompanyLookupService;
+// Add whitelisted IPs/ranges (HQV IPs - unlimited)
+$rateLimiter->addWhitelistedRange('14.224.174.0/24');    // 14.224.174.0 - 14.224.174.255
+$rateLimiter->addWhitelistedRange('36.50.234.0/23');     // 36.50.234.0 - 36.50.235.255
+$rateLimiter->addWhitelistedIP('118.69.168.15');
+$rateLimiter->addWhitelistedIP('118.69.171.5');
+
+// Check rate limit
+$rateCheck = $rateLimiter->check();
+
+// Add rate limit headers
+if (!$rateCheck['whitelisted']) {
+    header('X-RateLimit-Limit: 5');
+    header('X-RateLimit-Remaining: ' . max(0, $rateCheck['remaining']));
+    header('X-RateLimit-Reset: ' . $rateCheck['reset']);
+}
+
+// Block if rate limit exceeded
+if (!$rateCheck['allowed']) {
+    http_response_code(429);
+    header('Retry-After: ' . $rateCheck['retry_after']);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Bạn đã vượt quá giới hạn 5 lần tra cứu/giờ. Vui lòng thử lại sau.',
+        'retry_after' => $rateCheck['retry_after'],
+        'reset' => date('Y-m-d H:i:s', $rateCheck['reset'])
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 // Trim and validate tax code format
 $taxCode = trim($taxCode);

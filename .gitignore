@@ -21,3 +21,6 @@ Thumbs.db
 
 # Test files
 test.php
+
+# Rate limit data
+/data/
