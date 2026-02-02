@@ -1,0 +1,23 @@
+# Dependencies
+/vendor/
+
+# Environment & Secrets
+proxies.txt
+*.env
+.env*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test files
+test.php

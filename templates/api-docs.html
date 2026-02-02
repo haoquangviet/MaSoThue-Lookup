@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Company Lookup</title>
+    <style>
+        :root {
+            --primary: #FF791D;
+            --secondary: #174785;
+            --success: #348D00;
+            --accent: #ED542C;
+            --bg-light: #f8f9fa;
+            --bg-code: #1e1e1e;
+            --text-dark: #333;
+            --text-muted: #666;
+            --border: #ddd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            line-height: 1.6;
+        }
+
+        .navbar {
+            background: var(--secondary);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar-content {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar h1 {
+            color: #fff;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .navbar a {
+            color: rgba(255,255,255,0.9);
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .navbar a:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--secondary) 0%, #0d2d5a 100%);
+            color: #fff;
+            margin-bottom: 40px;
+        }
+
+        .hero h2 {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .hero p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+
+        .section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .section h3 {
+            color: var(--secondary);
+            font-size: 22px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .endpoint-box {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .method {
+            background: var(--success);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .endpoint-url {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 15px;
+            color: var(--text-dark);
+            word-break: break-all;
+        }
+
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+
+        .params-table th,
+        .params-table td {
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .params-table th {
+            background: var(--bg-light);
+            font-weight: 600;
+            color: var(--secondary);
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .params-table td {
+            font-size: 14px;
+        }
+
+        .param-name {
+            font-family: 'Monaco', 'Menlo', monospace;
+            background: #e8f4fd;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: var(--secondary);
+            font-size: 13px;
+        }
+
+        .param-required {
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        pre {
+            background: var(--bg-code);
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 16px 0;
+        }
+
+        pre .key { color: #9cdcfe; }
+        pre .string { color: #ce9178; }
+        pre .boolean { color: #569cd6; }
+
+        .response-codes {
+            display: grid;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .response-code {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: var(--bg-light);
+            border-radius: 8px;
+        }
+
+        .code-badge {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 13px;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .code-200 { background: #d4edda; color: var(--success); }
+        .code-400 { background: #fff3cd; color: #856404; }
+        .code-404 { background: #f8d7da; color: var(--accent); }
+        .code-500 { background: #f8d7da; color: #721c24; }
+
+        .try-it {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .try-it h4 {
+            margin-bottom: 12px;
+            color: var(--secondary);
+        }
+
+        .try-it-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .try-it input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .try-it input:focus {
+            border-color: var(--primary);
+        }
+
+        .try-it button {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .try-it button:hover {
+            background: #e56a10;
+        }
+
+        .try-result {
+            margin-top: 16px;
+            display: none;
+        }
+
+        .try-result.show {
+            display: block;
+        }
+
+        .field-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .field-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-light);
+            border-radius: 6px;
+        }
+
+        .field-name {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            color: var(--secondary);
+            background: #e8f4fd;
+            padding: 2px 6px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        .field-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        @media (max-width: 600px) {
+            .hero h2 { font-size: 24px; }
+            .endpoint-box { flex-direction: column; align-items: flex-start; }
+            .try-it-form { flex-direction: column; }
+            .field-list { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-content">
+            <h1>📄 API Documentation</h1>
+            <a href="/">← Tra cứu MST</a>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <h2>Company Lookup API</h2>
+        <p>API tra cứu thông tin doanh nghiệp Việt Nam theo mã số thuế</p>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h3>Tổng quan</h3>
+            <p>API cho phép tra cứu thông tin công ty/doanh nghiệp Việt Nam dựa trên mã số thuế (MST). Dữ liệu được lấy từ nguồn công khai và trả về định dạng JSON.</p>
+            <div class="endpoint-box">
+                <span class="method">GET</span>
+                <span class="endpoint-url">https://companylookup.hqv.biz/?mst={tax_code}</span>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Tham số</h3>
+            <table class="params-table">
+                <thead>
+                    <tr>
+                        <th>Tham số</th>
+                        <th>Loại</th>
+                        <th>Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="param-name">mst</span> <span class="param-required">BẮT BUỘC</span></td>
+                        <td>string</td>
+                        <td>Mã số thuế doanh nghiệp (10-14 ký tự số, có thể chứa dấu gạch ngang)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h3>Các trường dữ liệu trả về</h3>
+            <p>Khi tra cứu thành công, API trả về object <code>data</code> với các trường sau:</p>
+            <div class="field-list">
+                <div class="field-item"><span class="field-name">taxCode</span><span class="field-desc">Mã số thuế</span></div>
+                <div class="field-item"><span class="field-name">name</span><span class="field-desc">Tên công ty</span></div>
+                <div class="field-item"><span class="field-name">nameInternational</span><span class="field-desc">Tên quốc tế</span></div>
+                <div class="field-item"><span class="field-name">nameShort</span><span class="field-desc">Tên viết tắt</span></div>
+                <div class="field-item"><span class="field-name">address</span><span class="field-desc">Địa chỉ đầy đủ</span></div>
+                <div class="field-item"><span class="field-name">addressLine1</span><span class="field-desc">Số nhà, tên đường</span></div>
+                <div class="field-item"><span class="field-name">city</span><span class="field-desc">Phường/Xã/Quận</span></div>
+                <div class="field-item"><span class="field-name">stateProvince</span><span class="field-desc">Tỉnh/Thành phố</span></div>
+                <div class="field-item"><span class="field-name">country</span><span class="field-desc">Quốc gia</span></div>
+                <div class="field-item"><span class="field-name">representative</span><span class="field-desc">Người đại diện pháp luật</span></div>
+                <div class="field-item"><span class="field-name">phone</span><span class="field-desc">Số điện thoại</span></div>
+                <div class="field-item"><span class="field-name">establishedDate</span><span class="field-desc">Ngày hoạt động</span></div>
+                <div class="field-item"><span class="field-name">status</span><span class="field-desc">Tình trạng hoạt động</span></div>
+                <div class="field-item"><span class="field-name">businessType</span><span class="field-desc">Loại hình doanh nghiệp</span></div>
+                <div class="field-item"><span class="field-name">businessSector</span><span class="field-desc">Ngành nghề chính</span></div>
+                <div class="field-item"><span class="field-name">managedBy</span><span class="field-desc">Cơ quan thuế quản lý</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Mã trạng thái HTTP</h3>
+            <div class="response-codes">
+                <div class="response-code"><span class="code-badge code-200">200</span><span>Thành công - Trả về thông tin công ty</span></div>
+                <div class="response-code"><span class="code-badge code-400">400</span><span>Bad Request - Thiếu tham số hoặc định dạng MST không hợp lệ</span></div>
+                <div class="response-code"><span class="code-badge code-404">404</span><span>Not Found - Không tìm thấy công ty với MST đã cho</span></div>
+                <div class="response-code"><span class="code-badge code-500">500</span><span>Server Error - Lỗi hệ thống</span></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Ví dụ Response</h3>
+            <h4 style="margin: 20px 0 10px; color: var(--success);">✓ Thành công (200)</h4>
+<pre>{
+    <span class="key">"success"</span>: <span class="boolean">true</span>,
+    <span class="key">"data"</span>: {
+        <span class="key">"taxCode"</span>: <span class="string">"0315065353"</span>,
+        <span class="key">"name"</span>: <span class="string">"CÔNG TY TNHH PHẦN MỀM HÀO QUANG VIỆT"</span>,
+        <span class="key">"nameInternational"</span>: <span class="string">"HAO QUANG VIET SOFTWARE COMPANY LIMITED"</span>,
+        <span class="key">"address"</span>: <span class="string">"Tầng 19, Indochina Park Tower, Phường Tân Định, TP HCM"</span>,
+        <span class="key">"representative"</span>: <span class="string">"TRẦN VĂN QUYẾT"</span>,
+        <span class="key">"phone"</span>: <span class="string">"02877796009"</span>,
+        <span class="key">"status"</span>: <span class="string">"Đang hoạt động"</span>
+    }
+}</pre>
+            <h4 style="margin: 20px 0 10px; color: var(--accent);">✗ Không tìm thấy (404)</h4>
+<pre>{
+    <span class="key">"success"</span>: <span class="boolean">false</span>,
+    <span class="key">"error"</span>: <span class="string">"Company not found"</span>,
+    <span class="key">"taxCode"</span>: <span class="string">"1234567890"</span>
+}</pre>
+        </div>
+
+        <div class="section">
+            <h3>Ví dụ Code</h3>
+            <h4 style="margin: 20px 0 10px;">cURL</h4>
+<pre>curl "https://companylookup.hqv.biz/?mst=0315065353"</pre>
+            <h4 style="margin: 20px 0 10px;">JavaScript</h4>
+<pre>const res = await fetch('https://companylookup.hqv.biz/?mst=0315065353');
+const data = await res.json();
+if (data.success) console.log(data.data.name);</pre>
+            <h4 style="margin: 20px 0 10px;">PHP</h4>
+<pre>$json = file_get_contents('https://companylookup.hqv.biz/?mst=0315065353');
+$data = json_decode($json, true);
+if ($data['success']) echo $data['data']['name'];</pre>
+            <h4 style="margin: 20px 0 10px;">Python</h4>
+<pre>import requests
+r = requests.get('https://companylookup.hqv.biz/', params={'mst': '0315065353'})
+data = r.json()
+if data['success']: print(data['data']['name'])</pre>
+        </div>
+
+        <div class="section">
+            <h3>Thử nghiệm API</h3>
+            <div class="try-it">
+                <h4>Nhập mã số thuế để test:</h4>
+                <div class="try-it-form">
+                    <input type="text" id="tryMst" placeholder="VD: 0315065353" maxlength="14">
+                    <button onclick="tryApi()">Gửi request</button>
+                </div>
+                <div class="try-result" id="tryResult">
+                    <pre id="tryResultCode"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>© 2024 Company Lookup API | <a href="/">Trang chủ</a></p>
+    </div>
+
+    <script>
+        async function tryApi() {
+            const mst = document.getElementById('tryMst').value.trim();
+            const resultDiv = document.getElementById('tryResult');
+            const resultCode = document.getElementById('tryResultCode');
+            if (!mst) { alert('Vui lòng nhập mã số thuế'); return; }
+            resultCode.textContent = 'Đang tải...';
+            resultDiv.classList.add('show');
+            try {
+                const response = await fetch('/?mst=' + encodeURIComponent(mst));
+                const data = await response.json();
+                resultCode.textContent = JSON.stringify(data, null, 4);
+            } catch (error) {
+                resultCode.textContent = 'Lỗi: ' + error.message;
+            }
+        }
+        document.getElementById('tryMst').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') tryApi();
+        });
+    </script>
+</body>
+</html>

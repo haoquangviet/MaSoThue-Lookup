@@ -1,0 +1,18 @@
+{
+    "name": "hqv/get-masothue",
+    "description": "Company lookup service from masothue.com",
+    "require": {
+        "php": ">=7.4",
+        "guzzlehttp/guzzle": "^7.5"
+    },
+    "config": {
+        "platform": {
+            "php": "7.4.33"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "HQV\\Masothue\\": "src/"
+        }
+    }
+}

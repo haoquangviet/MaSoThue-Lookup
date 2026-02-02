@@ -1,0 +1,34 @@
+AddHandler php74 .php
+<FilesMatch "\.php$">
+    SetHandler php74
+</FilesMatch>
+
+# Security headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# Deny access to sensitive files
+<FilesMatch "(^\.htaccess|composer\.(json|lock)|proxies\.txt|test\.php)$">
+    <IfModule LiteSpeed>
+        Require all denied
+    </IfModule>
+    <IfModule !LiteSpeed>
+        Order Allow,Deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Rewrite rules
+RewriteEngine On
+
+# Deny access to src, vendor, and templates directories
+RewriteRule ^(src|vendor|templates)/ - [F,L]
+
+# Route /docs and /api-docs to index.php
+RewriteRule ^docs/?$ index.php [L]
+RewriteRule ^api-docs/?$ index.php [L]
+
+# Default charset
+AddDefaultCharset UTF-8

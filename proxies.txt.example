@@ -1,0 +1,12 @@
+# Proxy Configuration for Company Lookup Service
+# Format: http://username:password@host:port
+# One proxy per line. Lines starting with # are comments.
+
+# Example proxies (replace with your actual proxy):
+# http://user:pass@proxy1.example.com:8080
+# http://user:pass@proxy2.example.com:8080
+
+# To use this file:
+# 1. Copy this file to proxies.txt
+# 2. Add your proxy credentials
+# 3. The service will randomly select from available proxies

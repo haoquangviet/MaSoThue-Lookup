@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tra cứu thông tin doanh nghiệp - Mã số thuế</title>
+    <style>
+        :root {
+            --primary: #FF791D;
+            --secondary: #174785;
+            --success: #348D00;
+            --accent: #ED542C;
+            --bg-light: #f8f9fa;
+            --text-dark: #333;
+            --text-muted: #666;
+            --border: #ddd;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--secondary) 0%, #0d2d5a 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 700px;
+            margin-top: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: rgba(255,255,255,0.8);
+            font-size: 16px;
+        }
+
+        .search-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .search-form {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 18px;
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(255, 121, 29, 0.15);
+        }
+
+        .search-input::placeholder {
+            color: #aaa;
+        }
+
+        .search-btn {
+            padding: 16px 32px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+            background: var(--primary);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s;
+            white-space: nowrap;
+        }
+
+        .search-btn:hover {
+            background: #e56a10;
+            transform: translateY(-1px);
+        }
+
+        .search-btn:active {
+            transform: translateY(0);
+        }
+
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .loading.show {
+            display: flex;
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .result {
+            display: none;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .result.show {
+            display: block;
+        }
+
+        .error-msg {
+            background: #fff5f5;
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: 16px 20px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .error-msg svg {
+            flex-shrink: 0;
+        }
+
+        .company-info {
+            background: var(--bg-light);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .company-header {
+            background: var(--secondary);
+            color: #fff;
+            padding: 20px;
+        }
+
+        .company-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .company-tax {
+            font-size: 14px;
+            opacity: 0.9;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            background: var(--success);
+            color: #fff;
+            margin-left: 10px;
+        }
+
+        .status-badge.inactive {
+            background: var(--accent);
+        }
+
+        .info-grid {
+            padding: 20px;
+            display: grid;
+            gap: 16px;
+        }
+
+        .info-row {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--text-dark);
+            word-break: break-word;
+        }
+
+        .info-value.highlight {
+            color: var(--secondary);
+            font-weight: 500;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            color: rgba(255,255,255,0.6);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            color: var(--primary);
+        }
+
+        @media (max-width: 600px) {
+            .search-form {
+                flex-direction: column;
+            }
+
+            .search-btn {
+                width: 100%;
+            }
+
+            .info-row {
+                grid-template-columns: 1fr;
+                gap: 4px;
+            }
+
+            .info-label {
+                font-size: 12px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Tra cứu thông tin doanh nghiệp</h1>
+            <p>Nhập mã số thuế để tra cứu thông tin công ty</p>
+        </div>
+
+        <div class="search-card">
+            <form class="search-form" id="searchForm">
+                <div class="input-wrapper">
+                    <input
+                        type="text"
+                        class="search-input"
+                        id="taxInput"
+                        placeholder="Nhập mã số thuế (VD: 0315065353)"
+                        pattern="[\d-]{10,14}"
+                        maxlength="14"
+                        required
+                        autofocus
+                    >
+                </div>
+                <button type="submit" class="search-btn" id="searchBtn">Tra cứu</button>
+            </form>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <span>Đang tra cứu thông tin...</span>
+            </div>
+
+            <div class="result" id="result"></div>
+        </div>
+
+        <div class="footer">
+            <p>Dữ liệu từ <a href="https://masothue.com" target="_blank">masothue.com</a> | <a href="/docs.php">📄 API Docs</a></p>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('searchForm');
+        const input = document.getElementById('taxInput');
+        const btn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('result');
+
+        // Format phone number
+        function formatPhone(phone) {
+            if (!phone) return 'N/A';
+            if (phone.length === 11) {
+                return phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1 $2 $3');
+            }
+            if (phone.length === 10) {
+                return phone.replace(/(\d{3})(\d{3})(\d{4})/, '$1 $2 $3');
+            }
+            return phone;
+        }
+
+        // Check if status is active
+        function isActive(status) {
+            if (!status) return false;
+            const lower = status.toLowerCase();
+            return lower.includes('hoạt động') && !lower.includes('ngừng') && !lower.includes('tạm');
+        }
+
+        // Render company info
+        function renderCompany(data) {
+            const statusClass = isActive(data.status) ? '' : 'inactive';
+            return `
+                <div class="company-info">
+                    <div class="company-header">
+                        <div class="company-name">${data.name || 'N/A'}</div>
+                        <div class="company-tax">
+                            <span>MST: ${data.taxCode}</span>
+                            ${data.status ? `<span class="status-badge ${statusClass}">${data.status}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="info-grid">
+                        ${data.nameInternational ? `
+                        <div class="info-row">
+                            <div class="info-label">Tên quốc tế</div>
+                            <div class="info-value">${data.nameInternational}</div>
+                        </div>` : ''}
+                        ${data.nameShort ? `
+                        <div class="info-row">
+                            <div class="info-label">Tên viết tắt</div>
+                            <div class="info-value">${data.nameShort}</div>
+                        </div>` : ''}
+                        <div class="info-row">
+                            <div class="info-label">Địa chỉ</div>
+                            <div class="info-value">${data.address || 'N/A'}</div>
+                        </div>
+                        ${data.representative ? `
+                        <div class="info-row">
+                            <div class="info-label">Người đại diện</div>
+                            <div class="info-value highlight">${data.representative}</div>
+                        </div>` : ''}
+                        ${data.phone ? `
+                        <div class="info-row">
+                            <div class="info-label">Điện thoại</div>
+                            <div class="info-value highlight">${formatPhone(data.phone)}</div>
+                        </div>` : ''}
+                        ${data.establishedDate ? `
+                        <div class="info-row">
+                            <div class="info-label">Ngày hoạt động</div>
+                            <div class="info-value">${data.establishedDate}</div>
+                        </div>` : ''}
+                        ${data.businessType ? `
+                        <div class="info-row">
+                            <div class="info-label">Loại hình DN</div>
+                            <div class="info-value">${data.businessType}</div>
+                        </div>` : ''}
+                        ${data.businessSector ? `
+                        <div class="info-row">
+                            <div class="info-label">Ngành nghề</div>
+                            <div class="info-value">${data.businessSector}</div>
+                        </div>` : ''}
+                        ${data.managedBy ? `
+                        <div class="info-row">
+                            <div class="info-label">Quản lý bởi</div>
+                            <div class="info-value">${data.managedBy}</div>
+                        </div>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Render error
+        function renderError(message) {
+            return `
+                <div class="error-msg">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        // Search function
+        async function search(taxCode) {
+            btn.disabled = true;
+            loading.classList.add('show');
+            result.classList.remove('show');
+
+            try {
+                const response = await fetch(`?mst=${encodeURIComponent(taxCode)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    result.innerHTML = renderCompany(data.data);
+                } else {
+                    result.innerHTML = renderError(data.error || 'Không tìm thấy thông tin');
+                }
+                result.classList.add('show');
+            } catch (error) {
+                result.innerHTML = renderError('Có lỗi xảy ra, vui lòng thử lại');
+                result.classList.add('show');
+            } finally {
+                btn.disabled = false;
+                loading.classList.remove('show');
+            }
+        }
+
+        // Form submit
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const taxCode = input.value.trim();
+            if (taxCode) {
+                search(taxCode);
+                // Update URL without reload
+                history.pushState(null, '', `?mst=${taxCode}`);
+            }
+        });
+
+        // Only allow numbers and dash
+        input.addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^\d-]/g, '');
+        });
+
+        // Check URL on load
+        const urlParams = new URLSearchParams(window.location.search);
+        const mst = urlParams.get('mst');
+        if (mst) {
+            input.value = mst;
+            search(mst);
+        }
+    </script>
+</body>
+</html>
