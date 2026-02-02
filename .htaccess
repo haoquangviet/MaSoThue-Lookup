@@ -7,6 +7,7 @@ AddHandler php74 .php
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
 </IfModule>
 
 # Deny access to sensitive files
@@ -22,6 +23,10 @@ AddHandler php74 .php
 
 # Rewrite rules
 RewriteEngine On
+
+# Force HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # Deny access to src, vendor, and templates directories
 RewriteRule ^(src|vendor|templates)/ - [F,L]
