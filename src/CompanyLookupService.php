@@ -294,12 +294,12 @@ class CompanyLookupService
 
         $companyInfo = new CompanyInfo();
         $companyInfo->taxCode = $taxCode;
-        $companyInfo->error = "Failed after {$this->maxRetries} attempts. Errors: " . implode(' | ', $allErrors);
+        $companyInfo->error = "Đã cố gắng {$this->maxRetries} lần nhưng không tìm thấy kết quả, vui lòng kiểm tra lại thông tin bạn nhập.";
         $companyInfo->logs = $allLogs;
         $companyInfo->steps = [[
             'step' => 'All Attempts Failed',
             'status' => 'error',
-            'message' => "Tried {$this->maxRetries} different proxies",
+            'message' => "Tried {$this->maxRetries} attempts",
             'timestamp' => time() * 1000,
         ]];
 
