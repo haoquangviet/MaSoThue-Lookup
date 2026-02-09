@@ -58,16 +58,32 @@ if (!$rateCheck['allowed']) {
     exit;
 }
 
-// Trim and validate tax code format
+// Trim and validate input (tax code or company name)
 $taxCode = trim($taxCode);
-if (!preg_match('/^[\d-]{10,14}$/', $taxCode)) {
-    http_response_code(400);
-    echo json_encode([
-        'success' => false,
-        'error' => 'Invalid tax code format. Expected 10-14 digits.',
-        'input' => $taxCode
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+$isTaxCodeInput = preg_match('/^\d[\d-]{8,13}$/', $taxCode);
+
+if ($isTaxCodeInput) {
+    // Tax code: validate 10-14 digits/dashes
+    if (!preg_match('/^[\d-]{10,14}$/', $taxCode)) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Mã số thuế không hợp lệ. Yêu cầu 10-14 chữ số.',
+            'input' => $taxCode
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+} else {
+    // Company name: at least 2 characters, max 200
+    if (mb_strlen($taxCode) < 2 || mb_strlen($taxCode) > 200) {
+        http_response_code(400);
+        echo json_encode([
+            'success' => false,
+            'error' => 'Từ khóa tìm kiếm phải từ 2 đến 200 ký tự.',
+            'input' => $taxCode
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }
 
 try {

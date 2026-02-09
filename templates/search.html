@@ -284,7 +284,7 @@
     <div class="container">
         <div class="header">
             <h1>🔍 Tra cứu thông tin doanh nghiệp</h1>
-            <p>Nhập mã số thuế để tra cứu thông tin công ty</p>
+            <p>Nhập mã số thuế hoặc tên công ty để tra cứu</p>
         </div>
 
         <div class="search-card">
@@ -294,9 +294,8 @@
                         type="text"
                         class="search-input"
                         id="taxInput"
-                        placeholder="Nhập mã số thuế (VD: 0315065353)"
-                        pattern="[\d-]{10,14}"
-                        maxlength="14"
+                        placeholder="Mã số thuế hoặc tên công ty"
+                        maxlength="200"
                         required
                         autofocus
                     >
@@ -453,9 +452,9 @@
             }
         });
 
-        // Only allow numbers and dash
+        // Trim extra spaces on input
         input.addEventListener('input', (e) => {
-            e.target.value = e.target.value.replace(/[^\d-]/g, '');
+            e.target.value = e.target.value.replace(/\s{2,}/g, ' ');
         });
 
         // Check URL on load

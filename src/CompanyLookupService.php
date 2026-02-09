@@ -418,7 +418,7 @@ class CompanyLookupService
 
             // Detect if input is tax code or company name
             $isTaxCodeInput = preg_match('/^\d[\d-]{8,13}$/', trim($taxCode));
-            $searchType = $isTaxCodeInput ? 'enterpriseTax' : 'enterpriseName';
+            $searchType = $isTaxCodeInput ? 'enterpriseTax' : 'auto';
             $searchUrl = "https://masothue.com/Search/?q=" . urlencode(trim($taxCode)) . "&type={$searchType}";
 
             $addStep('Fetch Company Page', 'pending', "Searching (type={$searchType}): {$searchUrl}");
@@ -458,13 +458,15 @@ class CompanyLookupService
             @$doc->loadHTML('<?xml encoding="UTF-8">' . $html);
             $xpath = new \DOMXPath($doc);
 
-            // Check if this is a search results page - find links with tax code
+            // Check if this is a search results page and follow the best result link
+            $detailPath = null;
+
             if ($isTaxCodeInput) {
+                // Tax code search: find links matching the exact tax code
                 $trimmedTax = trim($taxCode);
                 $searchLinks = $xpath->query("//a[starts-with(@href, '/" . $trimmedTax . "-')]");
                 if ($searchLinks->length > 0) {
                     // Find the main company link (skip branches like /TAXCODE-001-...)
-                    $detailPath = null;
                     $branchPath = null;
                     for ($li = 0; $li < $searchLinks->length; $li++) {
                         $href = $searchLinks->item($li)->getAttribute('href');
@@ -480,29 +482,43 @@ class CompanyLookupService
                     }
                     // Fallback to branch if no main company link found
                     if ($detailPath === null) $detailPath = $branchPath;
-
-                    $addLog("Found " . $searchLinks->length . " search result links, selected: {$detailPath}");
-
-                    if ($detailPath) {
-                        $detailUrl = "https://masothue.com{$detailPath}";
-                        $addStep('Fetch Detail Page', 'pending', "Fetching: {$detailUrl}");
-
-                        // Small delay to mimic human clicking
-                        usleep(random_int(200000, 500000)); // 200-500ms
-
-                        $detailHeaders = BrowserFingerprint::forSameOriginNavigation($fingerprint);
-                        $detailHeaders['Referer'] = $searchUrl;
-                        $detailResponse = $client->get($detailUrl, ['headers' => $detailHeaders]);
-                        $html = (string) $detailResponse->getBody();
-
-                        $doc = new \DOMDocument();
-                        @$doc->loadHTML('<?xml encoding="UTF-8">' . $html);
-                        $xpath = new \DOMXPath($doc);
-
-                        $addStep('Fetch Detail Page', 'success', "Got detail page ({$detailResponse->getStatusCode()})");
-                        $addLog("Detail page loaded, size: " . strlen($html) . " bytes");
+                    $addLog("Found " . $searchLinks->length . " tax code links, selected: {$detailPath}");
+                }
+            } else {
+                // Name search: find the first company result link (pattern: /DIGITS-slug)
+                $resultLinks = $xpath->query("//a[contains(@href, '-')]");
+                for ($li = 0; $li < $resultLinks->length; $li++) {
+                    $href = $resultLinks->item($li)->getAttribute('href');
+                    $text = trim($resultLinks->item($li)->textContent);
+                    if (empty($text) || empty($href)) continue;
+                    // Company detail links match: /0123456789-company-name-slug
+                    if (preg_match('/^\/(\d{10,14})-[a-z]/', $href)) {
+                        $detailPath = $href;
+                        $addLog("Found company result link: {$href} => {$text}");
+                        break;
                     }
                 }
+            }
+
+            // Follow the detail link if found
+            if ($detailPath) {
+                $detailUrl = "https://masothue.com{$detailPath}";
+                $addStep('Fetch Detail Page', 'pending', "Fetching: {$detailUrl}");
+
+                // Small delay to mimic human clicking
+                usleep(random_int(200000, 500000)); // 200-500ms
+
+                $detailHeaders = BrowserFingerprint::forSameOriginNavigation($fingerprint);
+                $detailHeaders['Referer'] = $searchUrl;
+                $detailResponse = $client->get($detailUrl, ['headers' => $detailHeaders]);
+                $html = (string) $detailResponse->getBody();
+
+                $doc = new \DOMDocument();
+                @$doc->loadHTML('<?xml encoding="UTF-8">' . $html);
+                $xpath = new \DOMXPath($doc);
+
+                $addStep('Fetch Detail Page', 'success', "Got detail page ({$detailResponse->getStatusCode()})");
+                $addLog("Detail page loaded, size: " . strlen($html) . " bytes");
             }
 
             // Strip heavy elements for raw HTML
@@ -512,9 +528,11 @@ class CompanyLookupService
             $addLog("Stripped HTML size: " . strlen($strippedHtml) . " bytes");
 
             // Check if company exists (error message)
-            $errorElements = $xpath->query("//*[contains(@class, 'alert-danger') or contains(@class, 'error-message')]");
+            // Only check div/p elements for errors - tr.alert-danger is used for inactive company status rows
+            $errorElements = $xpath->query("//div[contains(@class, 'alert-danger')] | //p[contains(@class, 'alert-danger')] | //*[contains(@class, 'error-message')]");
             if ($errorElements->length > 0) {
-                $addStep('Validate Page', 'error', 'Error message found on page');
+                $errorText = trim($errorElements->item(0)->textContent);
+                $addStep('Validate Page', 'error', "Error message found: {$errorText}");
                 $companyInfo->error = 'Company not found';
                 $companyInfo->logs = $logs;
                 $companyInfo->steps = $steps;
