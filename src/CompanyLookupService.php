@@ -3,7 +3,9 @@
 namespace HQV\Masothue;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Cookie\CookieJar;
 use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Exception\ClientException;
 
 /**
  * Company information structure
@@ -67,7 +69,7 @@ class CompanyLookupService
     private array $proxies = [];
     private ?string $proxyFile = null;
     private int $timeout = 120;
-    private int $maxRetries = 2;
+    private int $maxRetries = 3;
     private array $usedProxyIndexes = [];
 
     /**
@@ -275,8 +277,8 @@ class CompanyLookupService
                 $allLogs = array_merge($allLogs, $result->logs);
 
                 if ($attempt < $this->maxRetries) {
-                    $allLogs[] = "⚠️ Attempt {$attempt} failed, retrying with different proxy...";
-                    sleep(1);
+                    $allLogs[] = "⚠️ Attempt {$attempt} failed, retrying with different proxy + fingerprint...";
+                    sleep(random_int(1, 3));
                 }
 
             } catch (\Exception $e) {
@@ -284,8 +286,8 @@ class CompanyLookupService
                 $allLogs[] = "❌ Attempt {$attempt} exception: {$e->getMessage()}";
 
                 if ($attempt < $this->maxRetries) {
-                    $allLogs[] = "⚠️ Attempt {$attempt} failed, retrying with different proxy...";
-                    sleep(1);
+                    $allLogs[] = "⚠️ Attempt {$attempt} failed, retrying with different proxy + fingerprint...";
+                    sleep(random_int(1, 3));
                 }
             }
         }
@@ -302,6 +304,29 @@ class CompanyLookupService
         ]];
 
         return $companyInfo;
+    }
+
+    /**
+     * Extract CSRF token from masothue.com homepage HTML
+     */
+    private function extractCsrfToken(string $html): ?string
+    {
+        // Look for meta tag: <meta name="csrf-token" content="...">
+        if (preg_match('/<meta\s+name=["\']csrf-token["\']\s+content=["\']([^"\']+)["\']/i', $html, $matches)) {
+            return $matches[1];
+        }
+        // masothue.com uses: <input type="hidden" name="token" value="..." class="token-search">
+        if (preg_match('/<input[^>]+name=["\']token["\']\s+value=["\']([^"\']+)["\']/i', $html, $matches)) {
+            return $matches[1];
+        }
+        if (preg_match('/<input[^>]+value=["\']([^"\']+)["\']\s+name=["\']token["\']/i', $html, $matches)) {
+            return $matches[1];
+        }
+        // Fallback: <input type="hidden" name="_token" value="...">
+        if (preg_match('/<input[^>]+name=["\']_token["\']\s+value=["\']([^"\']+)["\']/i', $html, $matches)) {
+            return $matches[1];
+        }
+        return null;
     }
 
     /**
@@ -330,11 +355,18 @@ class CompanyLookupService
         };
 
         try {
+            // Generate random browser fingerprint for this attempt
+            $fingerprint = BrowserFingerprint::generate();
+            $browserDesc = BrowserFingerprint::describe($fingerprint);
+
             $proxyInfo = $proxyUrl ? parse_url($proxyUrl) : null;
             $proxyDisplay = $proxyInfo ? "{$proxyInfo['host']}:{$proxyInfo['port']}" : 'No proxy';
-            $addStep('Initialize', 'success', "Attempt {$attempt}/{$this->maxRetries} - Using proxy: {$proxyDisplay}");
+            $addStep('Initialize', 'success', "Attempt {$attempt}/{$this->maxRetries} - Proxy: {$proxyDisplay} - Browser: {$browserDesc}");
 
-            // Create Guzzle client with options
+            // Create cookie jar to persist cookies across requests (like a real browser)
+            $cookieJar = new CookieJar();
+
+            // Base client options
             $clientOptions = [
                 'timeout' => $this->timeout,
                 'connect_timeout' => 30,
@@ -342,22 +374,8 @@ class CompanyLookupService
                     'max' => 10,
                     'track_redirects' => true,
                 ],
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                    'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-                    'Accept-Language' => 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7',
-                    'Accept-Encoding' => 'gzip, deflate, br',
-                    'Cache-Control' => 'max-age=0',
-                    'Connection' => 'keep-alive',
-                    'Upgrade-Insecure-Requests' => '1',
-                    'Sec-Fetch-Dest' => 'document',
-                    'Sec-Fetch-Mode' => 'navigate',
-                    'Sec-Fetch-Site' => 'none',
-                    'Sec-Fetch-User' => '?1',
-                    'Sec-Ch-Ua' => '"Google Chrome";v="131", "Chromium";v="131", "Not_A Brand";v="24"',
-                    'Sec-Ch-Ua-Mobile' => '?0',
-                    'Sec-Ch-Ua-Platform' => '"Windows"',
-                ],
+                'cookies' => $cookieJar,
+                'headers' => $fingerprint,
                 'verify' => false,
             ];
 
@@ -369,16 +387,59 @@ class CompanyLookupService
                 $addLog('No proxy configured - using direct connection');
             }
 
+            $addLog("Fingerprint: {$browserDesc}, Lang: " . ($fingerprint['Accept-Language'] ?? 'n/a'));
+
             $client = new Client($clientOptions);
+
+            // Step 1: Fetch homepage to get cookies + CSRF token (like a real browser visit)
+            $addStep('Fetch Homepage', 'pending', 'Loading masothue.com homepage for cookies/CSRF');
+
+            $homepageStartTime = microtime(true);
+            try {
+                $homepageResponse = $client->get('https://masothue.com/');
+                $homepageTime = round((microtime(true) - $homepageStartTime) * 1000);
+                $homepageHtml = (string) $homepageResponse->getBody();
+
+                $csrfToken = $this->extractCsrfToken($homepageHtml);
+                $cookieCount = count($cookieJar->toArray());
+
+                $addStep('Fetch Homepage', 'success', "Got homepage ({$homepageResponse->getStatusCode()}) in {$homepageTime}ms, cookies: {$cookieCount}, CSRF: " . ($csrfToken ? 'found' : 'none'));
+            } catch (\Exception $e) {
+                $homepageTime = round((microtime(true) - $homepageStartTime) * 1000);
+                $csrfToken = null;
+                $addStep('Fetch Homepage', 'warning', "Homepage failed in {$homepageTime}ms: {$e->getMessage()} - continuing without cookies");
+            }
+
+            // Small delay to mimic human browsing
+            usleep(random_int(300000, 800000)); // 300-800ms
+
+            // Step 2: Search with same-origin headers (as if user clicked search from homepage)
+            $searchHeaders = BrowserFingerprint::forSameOriginNavigation($fingerprint);
 
             // Detect if input is tax code or company name
             $isTaxCodeInput = preg_match('/^\d[\d-]{8,13}$/', trim($taxCode));
             $searchType = $isTaxCodeInput ? 'enterpriseTax' : 'enterpriseName';
             $searchUrl = "https://masothue.com/Search/?q=" . urlencode(trim($taxCode)) . "&type={$searchType}";
-            $addStep('Fetch Company Page', 'pending', "Searching ({$searchType}): {$searchUrl}");
+
+            $addStep('Fetch Company Page', 'pending', "Searching (type={$searchType}): {$searchUrl}");
 
             $startTime = microtime(true);
-            $response = $client->get($searchUrl);
+            try {
+                $response = $client->get($searchUrl, ['headers' => $searchHeaders]);
+            } catch (ClientException $e) {
+                $responseCode = $e->getResponse() ? $e->getResponse()->getStatusCode() : 0;
+                $responseTime = round((microtime(true) - $startTime) * 1000);
+
+                if ($responseCode === 403) {
+                    $addStep('Fetch Company Page', 'error', "Got 403 Forbidden in {$responseTime}ms - bot detected");
+                    $companyInfo->error = "403 Forbidden - bot detected (attempt {$attempt})";
+                    $companyInfo->logs = $logs;
+                    $companyInfo->steps = $steps;
+                    return $companyInfo;
+                }
+
+                throw $e;
+            }
             $responseTime = round((microtime(true) - $startTime) * 1000);
 
             $finalUrl = $searchUrl;
@@ -399,16 +460,39 @@ class CompanyLookupService
 
             // Check if this is a search results page - find links with tax code
             if ($isTaxCodeInput) {
-                $searchLinks = $xpath->query("//a[starts-with(@href, '/" . trim($taxCode) . "-')]");
+                $trimmedTax = trim($taxCode);
+                $searchLinks = $xpath->query("//a[starts-with(@href, '/" . $trimmedTax . "-')]");
                 if ($searchLinks->length > 0) {
-                    $detailPath = $searchLinks->item(0)->getAttribute('href');
-                    $addLog("Found search result link: {$detailPath}");
+                    // Find the main company link (skip branches like /TAXCODE-001-...)
+                    $detailPath = null;
+                    $branchPath = null;
+                    for ($li = 0; $li < $searchLinks->length; $li++) {
+                        $href = $searchLinks->item($li)->getAttribute('href');
+                        $text = trim($searchLinks->item($li)->textContent);
+                        if (empty($text) || empty($href)) continue;
+                        // Branch pattern: /TAXCODE-NNN- where NNN is 3 digits
+                        if (preg_match('/^\/' . preg_quote($trimmedTax, '/') . '-\d{3}-/', $href)) {
+                            if ($branchPath === null) $branchPath = $href;
+                        } else {
+                            $detailPath = $href;
+                            break; // Main company found
+                        }
+                    }
+                    // Fallback to branch if no main company link found
+                    if ($detailPath === null) $detailPath = $branchPath;
+
+                    $addLog("Found " . $searchLinks->length . " search result links, selected: {$detailPath}");
 
                     if ($detailPath) {
                         $detailUrl = "https://masothue.com{$detailPath}";
                         $addStep('Fetch Detail Page', 'pending', "Fetching: {$detailUrl}");
 
-                        $detailResponse = $client->get($detailUrl);
+                        // Small delay to mimic human clicking
+                        usleep(random_int(200000, 500000)); // 200-500ms
+
+                        $detailHeaders = BrowserFingerprint::forSameOriginNavigation($fingerprint);
+                        $detailHeaders['Referer'] = $searchUrl;
+                        $detailResponse = $client->get($detailUrl, ['headers' => $detailHeaders]);
                         $html = (string) $detailResponse->getBody();
 
                         $doc = new \DOMDocument();
